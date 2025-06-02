@@ -65,7 +65,7 @@ install_packages() {
 # 필수 패키지들 확인 및 설치
 check_and_install_packages() {
     local missing_packages=()
-    local packages_to_check=("zsh" "git" "curl" "wget" "fasd" "fzf" "tree")
+    local packages_to_check=("zsh" "git" "curl" "wget" "fasd" "fzf" "tree" "neofetch" "tmux" "neovim")
     
     echo "필수 패키지들을 확인 중..."
     
@@ -128,5 +128,8 @@ git clone https://github.com/Aloxaf/fzf-tab ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/p
 echo "fzf-tab 플러그인이 설치되었습니다."
 # Enable Plugin
 sed -i 's/plugins=(git)/plugins=(git zsh-autosuggestions zsh-syntax-highlighting fzf-tab extract colored-man-pages zsh-history-substring-search fasd)/' ~/.zshrc
+
+# Config Directory
+mkdir -p ~/.config/nvim
 
 source ~/.zshrc

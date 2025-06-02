@@ -1,0 +1,57 @@
+" ~/.config/nvim/init.vim
+
+" 1. 기본 설정
+set nocompatible              " Vi 호환성 모드 해제
+filetype off                  " 플러그인 로딩 전에 파일형식 검사 해제
+
+" 2. 플러그인 매니저 (vim-plug) 설치 경로 지정
+call plug#begin('~/.local/share/nvim/plugged')
+
+" 3. 플러그인 목록
+Plug 'tpope/vim-sensible'               " 기본 환경 설정
+Plug 'junegunn/fzf', { 'do': { -> fzf#install() } }  " Fuzzy Finder
+Plug 'junegunn/fzf.vim'
+Plug 'neoclide/coc.nvim', {'branch': 'release'}     " LSP 클라이언트
+Plug 'morhetz/gruvbox'                  " 컬러 테마
+Plug 'jiangmiao/auto-pairs'             " 자동 괄호 완성
+Plug 'preservim/nerdtree'               " 사이드바 파일 탐색기
+Plug 'nvim-treesitter/nvim-treesitter', {'do': ':TSUpdate'} " 문법 하이라이트
+
+" 4. 플러그인 설치 마무리
+call plug#end()
+
+" 5. 기본 옵션
+syntax on                             " 문법 강조
+set number                            " 줄 번호 표시
+set relativenumber                    " 상대 줄 번호 표시
+set tabstop=4                         " 탭 너비 4 스페이스
+set shiftwidth=4                      " 들여쓰기 너비
+set expandtab                         " 탭을 스페이스로 변환
+set clipboard=unnamedplus             " 시스템 클립보드와 연동
+
+" 6. 색상 테마 적용
+colorscheme gruvbox
+set background=dark
+
+" 7. 자동 괄호 닫기 (auto-pairs 설정)
+let g:auto_pairs_map_bs = 1
+
+" 8. NERDTree 단축키 (토글)
+nnoremap <C-n> :NERDTreeToggle<CR>
+
+" 9. Coc.nvim (자동 완성) 설정 (예시)
+" <Tab> 키를 눌러 자동완성 목록 선택
+inoremap <silent><expr> <Tab> pumvisible() ? "\<C-n>" : "\<Tab>"
+inoremap <silent><expr> <S-Tab> pumvisible() ? "\<C-p>" : "\<S-Tab>"
+
+" 10. 기본 언어 서버 설치 (예: Python)
+" :CocInstall coc-pyright
+
+" 11. Treesitter 설정 예시
+lua << EOF
+require'nvim-treesitter.configs'.setup {
+  ensure_installed = {"c", "cpp", "python", "javascript", "go"},
+  highlight = { enable = true },
+  indent = { enable = true },
+}
+EOF

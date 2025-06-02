@@ -1,0 +1,52 @@
+# 1. prefix 키 변경 (Ctrl+a로 설정)
+unbind C-b          # 기존 prefix(Ctrl+b) 해제
+set -g prefix C-a   # 새로운 prefix: Ctrl+a
+bind C-a send-prefix # prefix 누른 뒤 다시 C-a를 누르면 literal C-a 전달
+
+# 2. vi 모드에서 복사하도록 설정
+setw -g mode-keys vi
+# 복사 시 시스템 클립보드 연동 (Linux: xclip)
+bind-key -T copy-mode-vi y send-keys -X copy-pipe-and-cancel "xclip -selection clipboard -in"
+
+# 3. 창 분할 시 편하게 방향키로 이동
+# 기존 (prefix + 방향키) 식을 유지하면서, 한 번에 분할 후 이동하게 매핑
+bind | split-window -h    # prefix + |  → 수직 분할 후 커서가 새 패인으로 이동
+bind - split-window -v    # prefix + -  → 수평 분할 후 커서가 새 패인으로 이동
+
+# 4. 창 이동을 vim 스타일 hjkl로 매핑
+bind h select-pane -L
+bind j select-pane -D
+bind k select-pane -U
+bind l select-pane -R
+
+# 5. 패인 크기 조절 (너비/높이 키맵 설정)
+bind -r H resize-pane -L 5  # prefix + Shift+h → 왼쪽으로 5 칸 늘이기
+bind -r L resize-pane -R 5  # prefix + Shift+l → 오른쪽으로 5 칸 늘이기
+bind -r K resize-pane -U 5  # prefix + Shift+k → 위로 5 줄 늘이기
+bind -r J resize-pane -D 5  # prefix + Shift+j → 아래로 5 줄 늘이기
+
+# 6. 창(윈도우) 목록을 항상 하단 창 리스트로 표시
+set -g status-bg colour235    # 상태바 배경 색상 (진한 회색)
+set -g status-fg colour136    # 상태바 글자 색상 (갈색)
+; set -g status-attr dim        # 상태바 텍스트 흐리게
+; setw -g window-status-current-bg colour28  # 현재 선택된 창 배경 색상
+set -g status-left "#[fg=green]#S #[fg=colour244]|"  # 왼쪽에 세션 이름 표시
+set -g status-right "#[fg=colour244]| #[fg=yellow]%Y-%m-%d %H:%M "  # 오른쪽에 날짜/시간 표시
+
+# 7. 마우스 사용 활성화 (창 전환, 복사 모드 진입, 드래그 등)
+set -g mouse on
+
+# 8. 베터리·날짜 등의 플러그인 없이 간단히 표시 (옵션)
+# (필요 시 shell script를 만들어 tmux에 적용가능)
+
+# 9. 시작 시 자동 복원 기능 없이, 창 순서 고정
+set-option -g renumber-windows on
+
+# 10. 창 최대화/원복 (Zoom) 키맵
+bind-key z resize-pane -Z
+
+# 11. 여러 패인에 동시에 명령 전송 (Toggle)
+bind-key y setw synchronize-panes
+
+# 12. 터미널 테마를 256컬러로 고정 (Kitty 등 GPU 터미널과 호환성)
+set -g default-terminal "xterm-256color"

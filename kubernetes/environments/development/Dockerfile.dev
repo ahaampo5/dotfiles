@@ -1,0 +1,83 @@
+FROM ubuntu:22.04
+
+# 개발환경용 Dockerfile
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ENVIRONMENT=development
+
+# 개발용 패키지 설치 (더 많은 도구 포함)
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    gnupg \
+    software-properties-common \
+    apt-transport-https \
+    ca-certificates \
+    unzip \
+    jq \
+    yq \
+    git \
+    vim \
+    htop \
+    tree \
+    watch \
+    bash-completion \
+    && rm -rf /var/lib/apt/lists/*
+
+# kubectl 설치
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+    && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+# Helm 설치
+RUN curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | tee /usr/share/keyrings/helm.gpg > /dev/null \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | tee /etc/apt/sources.list.d/helm-stable-debian.list \
+    && apt-get update \
+    && apt-get install helm
+
+# Kind 설치 (로컬 클러스터용)
+RUN curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64 \
+    && chmod +x ./kind \
+    && mv ./kind /usr/local/bin/kind
+
+# Minikube 설치 (옵션)
+RUN curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64 \
+    && install minikube-linux-amd64 /usr/local/bin/minikube
+
+# 개발용 디버깅 도구
+RUN curl -sL https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_amd64.tar.gz | tar xzf - -C /tmp \
+    && mv /tmp/k9s /usr/local/bin/
+
+RUN curl -sL https://github.com/stern/stern/releases/latest/download/stern_1.25.0_linux_amd64.tar.gz | tar xzf - -C /tmp \
+    && mv /tmp/stern /usr/local/bin/
+
+# kubectx, kubens 설치
+RUN git clone https://github.com/ahmetb/kubectx /opt/kubectx \
+    && ln -s /opt/kubectx/kubectx /usr/local/bin/kubectx \
+    && ln -s /opt/kubectx/kubens /usr/local/bin/kubens
+
+# Docker CLI 설치 (개발환경에서 컨테이너 빌드용)
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg \
+    && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null \
+    && apt-get update \
+    && apt-get install -y docker-ce-cli
+
+# 개발용 kubectl 별칭 및 자동완성 설정
+RUN echo 'alias k=kubectl' >> /root/.bashrc \
+    && echo 'alias kgp="kubectl get pods"' >> /root/.bashrc \
+    && echo 'alias kgs="kubectl get services"' >> /root/.bashrc \
+    && echo 'alias kgd="kubectl get deployments"' >> /root/.bashrc \
+    && echo 'source <(kubectl completion bash)' >> /root/.bashrc \
+    && echo 'complete -F __start_kubectl k' >> /root/.bashrc
+
+WORKDIR /app
+
+# 개발용 스크립트 복사
+COPY scripts/ ./scripts/
+COPY environments/development/config.sh ./config/
+COPY k8s-manager.sh ./
+COPY Makefile ./
+
+# 실행 권한 부여
+RUN chmod +x k8s-manager.sh scripts/*.sh
+
+# 개발용 기본 명령어
+CMD ["bash"]

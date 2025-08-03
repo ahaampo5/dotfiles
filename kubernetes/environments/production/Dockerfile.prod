@@ -1,0 +1,82 @@
+FROM ubuntu:22.04
+
+# 프로덕션용 Dockerfile - 보안 강화
+ENV DEBIAN_FRONTEND=noninteractive
+ENV ENVIRONMENT=production
+
+# 보안 업데이트 및 최소한의 패키지만 설치
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    gnupg \
+    ca-certificates \
+    unzip \
+    jq \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get autoremove -y
+
+# kubectl 설치 (특정 버전 고정)
+ARG KUBECTL_VERSION=v1.28.2
+RUN curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
+    && curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl.sha256" \
+    && echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check \
+    && install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl \
+    && rm kubectl kubectl.sha256
+
+# Helm 설치 (특정 버전 고정)
+ARG HELM_VERSION=v3.12.3
+RUN curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 \
+    && chmod 700 get_helm.sh \
+    && HELM_INSTALL_DIR=/usr/local/bin ./get_helm.sh --version ${HELM_VERSION} \
+    && rm get_helm.sh
+
+# Terraform 설치 (특정 버전 고정)
+ARG TERRAFORM_VERSION=1.5.7
+RUN wget https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
+    && unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip \
+    && mv terraform /usr/local/bin/ \
+    && rm terraform_${TERRAFORM_VERSION}_linux_amd64.zip
+
+# ArgoCD CLI 설치 (특정 버전 고정)
+ARG ARGOCD_VERSION=v2.8.4
+RUN curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/download/${ARGOCD_VERSION}/argocd-linux-amd64 \
+    && install -m 555 argocd-linux-amd64 /usr/local/bin/argocd \
+    && rm argocd-linux-amd64
+
+# 보안 도구 설치
+# Trivy (취약점 스캐너)
+RUN curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+
+# OPA Conftest (정책 검증)
+RUN curl -L https://github.com/open-policy-agent/conftest/releases/latest/download/conftest_linux_amd64.tar.gz | tar xz -C /tmp \
+    && mv /tmp/conftest /usr/local/bin
+
+# 비루트 사용자 생성 (보안 강화)
+RUN groupadd -r k8s && useradd -r -g k8s -s /bin/bash k8s \
+    && mkdir -p /home/k8s \
+    && chown -R k8s:k8s /home/k8s
+
+# 작업 디렉토리 설정
+WORKDIR /app
+RUN chown -R k8s:k8s /app
+
+# 스크립트 복사 (보안 검증 후)
+COPY --chown=k8s:k8s scripts/ ./scripts/
+COPY --chown=k8s:k8s environments/production/config.sh ./config/
+COPY --chown=k8s:k8s k8s-manager.sh ./
+COPY --chown=k8s:k8s Makefile ./
+
+# 실행 권한 부여 (최소 권한)
+RUN chmod 750 k8s-manager.sh scripts/*.sh \
+    && chmod 640 config/config.sh Makefile
+
+# 비루트 사용자로 전환
+USER k8s
+
+# 헬스체크 추가
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD kubectl version --client --output=json || exit 1
+
+# 프로덕션용 기본 명령어 (읽기 전용)
+CMD ["./k8s-manager.sh", "status"]

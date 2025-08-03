@@ -1,0 +1,110 @@
+version: '3.8'
+
+services:
+  # 로컬 Kubernetes 클러스터 (Kind)
+  kind-cluster:
+    image: kindest/node:v1.27.3
+    container_name: dev-k8s-cluster
+    privileged: true
+    ports:
+      - "8080:8080"   # Dashboard
+      - "6443:6443"   # API Server
+    volumes:
+      - ./environments/development:/app/config
+      - ./dev-manifests:/app/manifests
+    networks:
+      - dev-network
+    profiles:
+      - development
+      
+  # 개발용 관리 도구
+  dev-manager:
+    build:
+      context: .
+      dockerfile: environments/development/Dockerfile.dev
+    container_name: dev-k8s-manager
+    environment:
+      - ENVIRONMENT=development
+      - DOMAIN=dev.local
+      - CLUSTER_NAME=dev-cluster
+      - DEBUG=true
+      - ENABLE_DEBUG_TOOLS=true
+    volumes:
+      - ~/.kube:/root/.kube
+      - ./environments/development:/app/config
+      - ./logs:/app/logs
+      - .:/app/workspace  # 전체 워크스페이스 마운트 (개발용)
+    networks:
+      - dev-network
+    depends_on:
+      - kind-cluster
+    profiles:
+      - development
+    command: ["./k8s-manager.sh", "setup-dev-environment"]
+      
+  # 개발용 데이터베이스
+  dev-postgres:
+    image: postgres:15-alpine
+    container_name: dev-postgres
+    environment:
+      - POSTGRES_DB=devdb
+      - POSTGRES_USER=dev
+      - POSTGRES_PASSWORD=devpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - dev-postgres-data:/var/lib/postgresql/data
+    networks:
+      - dev-network
+    profiles:
+      - development
+      
+  # 개발용 Redis
+  dev-redis:
+    image: redis:7-alpine
+    container_name: dev-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - dev-network
+    profiles:
+      - development
+      
+  # 개발용 모니터링 (가벼운 버전)
+  dev-monitoring:
+    image: grafana/grafana:latest
+    container_name: dev-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=dev
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - dev-grafana-data:/var/lib/grafana
+      - ./environments/development/monitoring:/etc/grafana/provisioning
+    networks:
+      - dev-network
+    profiles:
+      - development
+      - monitoring
+      
+  # 개발용 로그 수집
+  dev-logs:
+    image: fluent/fluent-bit:latest
+    container_name: dev-fluent-bit
+    volumes:
+      - ./logs:/fluent-bit/logs:ro
+      - ./environments/development/logging/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+    networks:
+      - dev-network
+    profiles:
+      - development
+      - logging
+
+networks:
+  dev-network:
+    driver: bridge
+
+volumes:
+  dev-postgres-data:
+  dev-grafana-data:

@@ -1,0 +1,62 @@
+# Kubernetes 관리 도구 .gitignore
+# 생성일: 2025년 8월 3일
+
+# 로그 파일들
+logs/
+*.log
+*.log.*
+
+# 임시 파일들
+*.tmp
+*.temp
+.tmp/
+temp/
+
+# 환경별 비밀 정보
+*.secret
+*.key
+*.pem
+*.crt
+environments/*/secrets/
+config/secrets/
+
+# Docker 관련
+.dockerignore
+
+# Kubernetes 설정 백업
+*.backup
+backups/
+
+# 환경별 로컬 설정
+environments/*/local.env
+environments/*/.env.local
+
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Terraform (향후 사용시)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Helm charts cache
+charts/
+*.tgz
+
+# kubectl 임시 파일
+kubeconfig.*
+*-kubeconfig

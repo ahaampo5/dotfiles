@@ -1,0 +1,191 @@
+version: '3.8'
+
+services:
+  # 프로덕션 관리 도구 (CI/CD 환경에서 실행)
+  prod-manager:
+    build:
+      context: ../../
+      dockerfile: environments/production/Dockerfile.prod
+    container_name: prod-k8s-manager
+    environment:
+      - ENVIRONMENT=production
+      - DOMAIN=${DOMAIN}
+      - CLUSTER_NAME=${CLUSTER_NAME}
+      - AWS_REGION=${AWS_REGION}
+      - GOOGLE_PROJECT=${GOOGLE_PROJECT}
+      - AZURE_SUBSCRIPTION=${AZURE_SUBSCRIPTION}
+      - KUBECONFIG_BASE64=${KUBECONFIG_BASE64}  # CI/CD에서 주입
+    volumes:
+      - prod-logs:/app/logs
+      - ./environments/production:/app/config:ro
+      - ./manifests:/app/manifests:ro
+      - ./terraform:/app/terraform
+    secrets:
+      - kubeconfig
+      - aws-credentials
+      - gcp-service-account
+      - azure-credentials
+    networks:
+      - prod-network
+    profiles:
+      - production
+      - ci-cd
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 1G
+          cpus: '0.5'
+    command: ["./k8s-manager.sh", "deploy-production"]
+      
+  # Terraform 인프라 관리
+  terraform-runner:
+    build:
+      context: ../../
+      dockerfile: environments/production/Dockerfile.terraform
+    container_name: prod-terraform
+    environment:
+      - ENVIRONMENT=production
+      - TF_VAR_cluster_name=${CLUSTER_NAME}
+      - TF_VAR_domain=${DOMAIN}
+      - AWS_REGION=${AWS_REGION}
+    volumes:
+      - ./terraform:/app/terraform
+      - terraform-state:/app/state
+    secrets:
+      - aws-credentials
+      - terraform-backend-config
+    networks:
+      - prod-network
+    profiles:
+      - infrastructure
+      - terraform
+    command: ["terraform", "plan", "-var-file=production.tfvars"]
+      
+  # 보안 스캐너
+  security-scanner:
+    image: aquasec/trivy:latest
+    container_name: prod-security-scanner
+    volumes:
+      - ./manifests:/app/manifests:ro
+      - security-reports:/app/reports
+    networks:
+      - prod-network
+    profiles:
+      - security
+      - scanning
+    command: ["trivy", "fs", "--format", "json", "--output", "/app/reports/security-report.json", "/app/manifests"]
+      
+  # 정책 검증
+  policy-validator:
+    image: openpolicyagent/conftest:latest
+    container_name: prod-policy-validator
+    volumes:
+      - ./manifests:/app/manifests:ro
+      - ./environments/production/policies:/app/policies:ro
+      - policy-reports:/app/reports
+    networks:
+      - prod-network
+    profiles:
+      - security
+      - validation
+    command: ["conftest", "verify", "--policy", "/app/policies", "/app/manifests"]
+      
+  # 백업 관리
+  backup-manager:
+    build:
+      context: ../../
+      dockerfile: environments/production/Dockerfile.backup
+    container_name: prod-backup-manager
+    environment:
+      - ENVIRONMENT=production
+      - BACKUP_SCHEDULE=${BACKUP_SCHEDULE:-0 2 * * *}
+      - BACKUP_RETENTION=${BACKUP_RETENTION:-30d}
+      - S3_BUCKET=${BACKUP_S3_BUCKET}
+    volumes:
+      - backup-data:/app/backups
+    secrets:
+      - kubeconfig
+      - aws-credentials
+    networks:
+      - prod-network
+    profiles:
+      - backup
+      - maintenance
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      
+  # 모니터링 에이전트 (Prometheus Node Exporter)
+  monitoring-agent:
+    image: prom/node-exporter:latest
+    container_name: prod-monitoring-agent
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - prod-network
+    profiles:
+      - monitoring
+      - observability
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+
+# 프로덕션용 보안 네트워크
+networks:
+  prod-network:
+    driver: bridge
+    driver_opts:
+      encrypted: "true"
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# 프로덕션 볼륨 (백업 및 영속성)
+volumes:
+  prod-logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/log/k8s-prod
+  terraform-state:
+    external: true  # 외부 S3 백엔드 사용
+  security-reports:
+    driver: local
+  policy-reports:
+    driver: local
+  backup-data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /backup/k8s-prod
+
+# 프로덕션 시크릿 (외부 시크릿 관리자에서 주입)
+secrets:
+  kubeconfig:
+    external: true
+  aws-credentials:
+    external: true
+  gcp-service-account:
+    external: true
+  azure-credentials:
+    external: true
+  terraform-backend-config:
+    external: true

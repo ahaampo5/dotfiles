@@ -1,0 +1,42 @@
+#!/usr/bin/env zsh
+# 운영체제 정보 확인 함수
+
+function check_os() {
+    echo "🖥️  운영체제 정보"
+    echo "===================="
+    
+    # macOS 버전 확인
+    if [[ "$(uname)" == "Darwin" ]]; then
+        local macos_version=$(sw_vers -productVersion)
+        local macos_name=$(sw_vers -productName)
+        local build_version=$(sw_vers -buildVersion)
+        
+        echo "OS: ${macos_name}"
+        echo "버전: ${macos_version}"
+        echo "빌드: ${build_version}"
+        
+        # 시스템 아키텍처
+        local arch=$(uname -m)
+        echo "아키텍처: ${arch}"
+        
+        # 커널 버전
+        local kernel=$(uname -r)
+        echo "커널: ${kernel}"
+        
+        # 업타임
+        local uptime_info=$(uptime | awk -F'up ' '{print $2}' | awk -F', load' '{print $1}')
+        echo "업타임: ${uptime_info}"
+        
+    else
+        echo "OS: $(uname -s)"
+        echo "커널: $(uname -r)"
+        echo "아키텍처: $(uname -m)"
+    fi
+    
+    echo ""
+}
+
+# 함수 실행 (스크립트로 직접 실행될 때)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ "${(%):-%x}" == "${0}" ]]; then
+    check_os "$@"
+fi

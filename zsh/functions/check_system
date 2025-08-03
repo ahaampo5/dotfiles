@@ -1,0 +1,80 @@
+#!/usr/bin/env zsh
+# 시스템 전체 정보 확인 함수
+
+function check_system() {
+    echo "🖥️  시스템 전체 정보"
+    echo "======================"
+    echo ""
+    
+    # 함수들의 경로 설정
+    local functions_dir="${0:A:h}"
+    
+    # 각 함수 실행
+    if [[ -f "${functions_dir}/check_os" ]]; then
+        source "${functions_dir}/check_os"
+        check_os
+    fi
+    
+    if [[ -f "${functions_dir}/check_cpu" ]]; then
+        source "${functions_dir}/check_cpu"
+        check_cpu
+    fi
+    
+    if [[ -f "${functions_dir}/check_ram" ]]; then
+        source "${functions_dir}/check_ram" 
+        check_ram
+    fi
+    
+    if [[ -f "${functions_dir}/check_disk" ]]; then
+        source "${functions_dir}/check_disk"
+        check_disk
+    fi
+    
+    if [[ -f "${functions_dir}/check_gpu" ]]; then
+        source "${functions_dir}/check_gpu"
+        check_gpu
+    fi
+    
+    echo "✅ 시스템 정보 확인 완료!"
+}
+
+# 인자에 따른 개별 함수 실행
+function sysinfo() {
+    local functions_dir="${0:A:h}"
+    
+    case "$1" in
+        "os"|"OS")
+            if [[ -f "${functions_dir}/check_os" ]]; then
+                source "${functions_dir}/check_os" && check_os
+            fi
+            ;;
+        "cpu"|"CPU")
+            if [[ -f "${functions_dir}/check_cpu" ]]; then
+                source "${functions_dir}/check_cpu" && check_cpu
+            fi
+            ;;
+        "ram"|"RAM"|"memory"|"mem")
+            if [[ -f "${functions_dir}/check_ram" ]]; then
+                source "${functions_dir}/check_ram" && check_ram
+            fi
+            ;;
+        "disk"|"storage"|"hdd"|"ssd")
+            if [[ -f "${functions_dir}/check_disk" ]]; then
+                source "${functions_dir}/check_disk" && check_disk
+            fi
+            ;;
+        "gpu"|"GPU"|"graphics")
+            if [[ -f "${functions_dir}/check_gpu" ]]; then
+                source "${functions_dir}/check_gpu" && check_gpu
+            fi
+            ;;
+        "all"|""|*)
+            check_system
+            ;;
+    esac
+}
+
+# 함수 실행 (스크립트로 직접 실행될 때)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ "${(%):-%x}" == "${0}" ]]; then
+    sysinfo "$@"
+fi

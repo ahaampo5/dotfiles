@@ -1,0 +1,85 @@
+#!/usr/bin/env zsh
+# 메모리(RAM) 정보 확인 함수
+
+function check_ram() {
+    echo "💾 메모리 정보"
+    echo "=================="
+    
+    if [[ "$(uname)" == "Darwin" ]]; then
+        # macOS에서 메모리 정보 확인
+        local total_mem=$(sysctl -n hw.memsize 2>/dev/null)
+        
+        if [[ -n "$total_mem" ]]; then
+            # 바이트를 GB로 변환
+            local total_gb=$(echo "scale=2; $total_mem / 1024 / 1024 / 1024" | bc 2>/dev/null)
+            echo "총 메모리: ${total_gb} GB"
+        fi
+        
+        # vm_stat을 사용하여 메모리 사용량 확인
+        if command -v vm_stat >/dev/null 2>&1; then
+            local vm_info=$(vm_stat)
+            local page_size=$(vm_stat | head -1 | grep -o '[0-9]*')
+            
+            # 각 메모리 타입의 페이지 수 추출
+            local free_pages=$(echo "$vm_info" | grep "Pages free" | awk '{print $3}' | sed 's/\.//')
+            local active_pages=$(echo "$vm_info" | grep "Pages active" | awk '{print $3}' | sed 's/\.//')
+            local inactive_pages=$(echo "$vm_info" | grep "Pages inactive" | awk '{print $3}' | sed 's/\.//')
+            local wired_pages=$(echo "$vm_info" | grep "Pages wired down" | awk '{print $4}' | sed 's/\.//')
+            local compressed_pages=$(echo "$vm_info" | grep "Pages stored in compressor" | awk '{print $5}' | sed 's/\.//')
+            
+            if [[ -n "$page_size" && -n "$free_pages" ]]; then
+                # 페이지를 GB로 변환
+                local free_gb=$(echo "scale=2; $free_pages * $page_size / 1024 / 1024 / 1024" | bc 2>/dev/null)
+                local active_gb=$(echo "scale=2; $active_pages * $page_size / 1024 / 1024 / 1024" | bc 2>/dev/null)
+                local inactive_gb=$(echo "scale=2; $inactive_pages * $page_size / 1024 / 1024 / 1024" | bc 2>/dev/null)
+                local wired_gb=$(echo "scale=2; $wired_pages * $page_size / 1024 / 1024 / 1024" | bc 2>/dev/null)
+                
+                local used_gb=$(echo "scale=2; $active_gb + $inactive_gb + $wired_gb" | bc 2>/dev/null)
+                local usage_percent=$(echo "scale=1; $used_gb * 100 / $total_gb" | bc 2>/dev/null)
+                
+                echo "사용 중: ${used_gb} GB"
+                echo "사용 가능: ${free_gb} GB"
+                echo "사용률: ${usage_percent}%"
+                echo ""
+                echo "세부 정보:"
+                echo "  - Active: ${active_gb} GB"
+                echo "  - Inactive: ${inactive_gb} GB"
+                echo "  - Wired: ${wired_gb} GB"
+                
+                if [[ -n "$compressed_pages" ]]; then
+                    local compressed_gb=$(echo "scale=2; $compressed_pages * $page_size / 1024 / 1024 / 1024" | bc 2>/dev/null)
+                    echo "  - Compressed: ${compressed_gb} GB"
+                fi
+            fi
+        fi
+        
+        # 메모리 압박 상태 확인
+        local memory_pressure=$(memory_pressure 2>/dev/null | grep "System-wide memory free percentage" | awk '{print $6}' | sed 's/%//')
+        if [[ -n "$memory_pressure" ]]; then
+            echo "메모리 여유율: ${memory_pressure}%"
+        fi
+        
+    else
+        # Linux/Unix 시스템
+        if [[ -f /proc/meminfo ]]; then
+            local total_kb=$(grep "MemTotal" /proc/meminfo | awk '{print $2}')
+            local free_kb=$(grep "MemFree" /proc/meminfo | awk '{print $2}')
+            local available_kb=$(grep "MemAvailable" /proc/meminfo | awk '{print $2}')
+            
+            local total_gb=$(echo "scale=2; $total_kb / 1024 / 1024" | bc)
+            local free_gb=$(echo "scale=2; $free_kb / 1024 / 1024" | bc)
+            local available_gb=$(echo "scale=2; $available_kb / 1024 / 1024" | bc)
+            
+            echo "총 메모리: ${total_gb} GB"
+            echo "사용 가능: ${available_gb} GB"
+            echo "여유 메모리: ${free_gb} GB"
+        fi
+    fi
+    
+    echo ""
+}
+
+# 함수 실행 (스크립트로 직접 실행될 때)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ "${(%):-%x}" == "${0}" ]]; then
+    check_ram "$@"
+fi

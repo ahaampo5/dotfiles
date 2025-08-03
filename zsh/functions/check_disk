@@ -1,0 +1,72 @@
+#!/usr/bin/env zsh
+# 디스크 정보 확인 함수
+
+function check_disk() {
+    echo "💿 디스크 정보"
+    echo "=================="
+    
+    if [[ "$(uname)" == "Darwin" ]]; then
+        # macOS에서 디스크 정보 확인
+        echo "마운트된 디스크:"
+        df -h | grep -E "^/dev/" | while read line; do
+            local device=$(echo "$line" | awk '{print $1}')
+            local size=$(echo "$line" | awk '{print $2}')
+            local used=$(echo "$line" | awk '{print $3}')
+            local available=$(echo "$line" | awk '{print $4}')
+            local percent=$(echo "$line" | awk '{print $5}')
+            local mount=$(echo "$line" | awk '{print $9}')
+            
+            echo "  📱 ${device}"
+            echo "     크기: ${size} | 사용: ${used} | 여유: ${available} | 사용률: ${percent}"
+            echo "     마운트: ${mount}"
+            echo ""
+        done
+        
+        # 디스크 I/O 정보
+        echo "디스크 I/O 통계:"
+        if command -v iostat >/dev/null 2>&1; then
+            iostat -d 1 2 | tail -n +3 | grep -v "^$" | tail -1 | while read line; do
+                local device=$(echo "$line" | awk '{print $1}')
+                local read_mb=$(echo "$line" | awk '{print $2}')
+                local write_mb=$(echo "$line" | awk '{print $3}')
+                echo "  ${device}: 읽기 ${read_mb} MB/s, 쓰기 ${write_mb} MB/s"
+            done
+        fi
+        
+        # 디스크 온도 (smartctl이 설치되어 있을 경우)
+        if command -v smartctl >/dev/null 2>&1; then
+            echo ""
+            echo "디스크 온도:"
+            diskutil list | grep "^/dev/disk" | awk '{print $1}' | while read disk; do
+                local temp=$(smartctl -a "$disk" 2>/dev/null | grep "Temperature_Celsius" | awk '{print $10}')
+                if [[ -n "$temp" ]]; then
+                    echo "  ${disk}: ${temp}°C"
+                fi
+            done
+        fi
+        
+        # SSD 수명 정보
+        echo ""
+        echo "SSD 상태:"
+        system_profiler SPSerialATADataType 2>/dev/null | grep -A 10 "Solid State" | grep -E "(Medium Type|Available Spare)" | while read line; do
+            echo "  $line"
+        done
+        
+    else
+        # Linux/Unix 시스템
+        echo "마운트된 파일시스템:"
+        df -h | grep -vE "^Filesystem|tmpfs|cdrom" | awk '{print $1 " " $2 " " $3 " " $4 " " $5 " " $6}'
+        
+        # 디스크 사용량 상위 10개 디렉토리
+        echo ""
+        echo "현재 디렉토리 하위 용량 상위 10개:"
+        du -h --max-depth=1 2>/dev/null | sort -hr | head -10
+    fi
+    
+    echo ""
+}
+
+# 함수 실행 (스크립트로 직접 실행될 때)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ "${(%):-%x}" == "${0}" ]]; then
+    check_disk "$@"
+fi

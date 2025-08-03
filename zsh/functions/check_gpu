@@ -1,0 +1,114 @@
+#!/usr/bin/env zsh
+# GPU 정보 확인 함수
+
+function check_gpu() {
+    echo "🎮 GPU 정보"
+    echo "================"
+    
+    if [[ "$(uname)" == "Darwin" ]]; then
+        # macOS에서 GPU 정보 확인
+        echo "그래픽 카드 정보:"
+        
+        # system_profiler를 사용하여 GPU 정보 확인
+        local gpu_info=$(system_profiler SPDisplaysDataType 2>/dev/null)
+        
+        if [[ -n "$gpu_info" ]]; then
+            echo "$gpu_info" | grep -E "(Chipset Model|VRAM|Resolution)" | while read line; do
+                if [[ "$line" =~ "Chipset Model:" ]]; then
+                    local model=$(echo "$line" | cut -d: -f2 | sed 's/^ *//')
+                    echo "  🔧 모델: ${model}"
+                elif [[ "$line" =~ "VRAM" ]]; then
+                    local vram=$(echo "$line" | cut -d: -f2 | sed 's/^ *//')
+                    echo "  💾 VRAM: ${vram}"
+                elif [[ "$line" =~ "Resolution:" ]]; then
+                    local resolution=$(echo "$line" | cut -d: -f2 | sed 's/^ *//')
+                    echo "  📺 해상도: ${resolution}"
+                fi
+            done
+        fi
+        
+        # Metal 지원 여부 확인
+        echo ""
+        echo "Metal 지원:"
+        if system_profiler SPDisplaysDataType 2>/dev/null | grep -q "Metal"; then
+            echo "  ✅ Metal 지원됨"
+            # Metal GPU 정보
+            local metal_info=$(system_profiler SPDisplaysDataType 2>/dev/null | grep -A 5 "Metal")
+            echo "$metal_info" | grep "Metal" | while read line; do
+                echo "  $line"
+            done
+        else
+            echo "  ❌ Metal 지원되지 않음"
+        fi
+        
+        # GPU 사용량 확인 (powermetrics 사용, 권한이 있을 경우)
+        echo ""
+        echo "GPU 사용률:"
+        if command -v powermetrics >/dev/null 2>&1; then
+            local gpu_usage=$(sudo powermetrics -n 1 -s gpu_power 2>/dev/null | grep "GPU HW active residency" | awk '{print $5}' | head -1)
+            if [[ -n "$gpu_usage" ]]; then
+                echo "  현재 사용률: ${gpu_usage}%"
+            else
+                echo "  사용률 정보를 가져올 수 없습니다 (권한 필요)"
+            fi
+        else
+            echo "  powermetrics를 사용할 수 없습니다"
+        fi
+        
+        # 외부 GPU 확인
+        echo ""
+        echo "외부 GPU:"
+        if system_profiler SPThunderboltDataType 2>/dev/null | grep -q "eGPU"; then
+            echo "  🔌 외부 GPU가 연결되어 있습니다"
+            system_profiler SPThunderboltDataType 2>/dev/null | grep -A 3 "eGPU"
+        else
+            echo "  외부 GPU가 연결되어 있지 않습니다"
+        fi
+        
+        # 디스플레이 정보
+        echo ""
+        echo "연결된 디스플레이:"
+        system_profiler SPDisplaysDataType 2>/dev/null | grep -E "Display Type|UI Looks like|Pixel Width|Pixel Height" | while read line; do
+            echo "  $line"
+        done
+        
+    else
+        # Linux 시스템
+        echo "GPU 정보:"
+        
+        # NVIDIA GPU 확인
+        if command -v nvidia-smi >/dev/null 2>&1; then
+            echo ""
+            echo "NVIDIA GPU:"
+            nvidia-smi --query-gpu=name,memory.total,memory.used,temperature.gpu,utilization.gpu --format=csv,noheader,nounits | while IFS=',' read name memory_total memory_used temp util; do
+                echo "  🎮 ${name// /}"
+                echo "  💾 메모리: ${memory_used// /}MB / ${memory_total// /}MB"
+                echo "  🌡️  온도: ${temp// /}°C"
+                echo "  ⚡ 사용률: ${util// /}%"
+            done
+        fi
+        
+        # AMD GPU 확인
+        if command -v rocm-smi >/dev/null 2>&1; then
+            echo ""
+            echo "AMD GPU:"
+            rocm-smi --showproductname --showmeminfo --showtemp --showuse
+        fi
+        
+        # 일반적인 GPU 정보 (lspci 사용)
+        if command -v lspci >/dev/null 2>&1; then
+            echo ""
+            echo "PCI GPU 정보:"
+            lspci | grep -i vga | while read line; do
+                echo "  $line"
+            done
+        fi
+    fi
+    
+    echo ""
+}
+
+# 함수 실행 (스크립트로 직접 실행될 때)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ "${(%):-%x}" == "${0}" ]]; then
+    check_gpu "$@"
+fi

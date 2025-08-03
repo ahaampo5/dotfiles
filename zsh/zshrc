@@ -3,7 +3,8 @@
 
 # Oh My Zsh 설정
 export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME="agnoster"
+# 일단 기본 테마로 설정 (나중에 커스텀으로 대체)
+ZSH_THEME=""
 
 # 플러그인 설정
 plugins=(
@@ -15,6 +16,137 @@ plugins=(
 )
 
 source $ZSH/oh-my-zsh.sh
+
+# Conda 환경 변수 설정 (프롬프트 변경 방지)
+export CONDA_CHANGEPS1=false
+
+# ============================================
+# 커스텀 2줄 프롬프트 설정 (agnoster 스타일)
+# ============================================
+
+# 프롬프트 설정
+setopt PROMPT_SUBST
+
+# Powerline 스타일 구분자
+SEGMENT_SEPARATOR=$'\ue0b0'
+SEGMENT_SEPARATOR_RIGHT=$'\ue0b2'
+
+# 색상 정의
+typeset -A bg_colors fg_colors
+bg_colors=(
+    black   "%K{0}"
+    red     "%K{1}"
+    green   "%K{2}"
+    yellow  "%K{3}"
+    blue    "%K{4}"
+    magenta "%K{5}"
+    cyan    "%K{6}"
+    white   "%K{7}"
+    bright_black   "%K{8}"
+    bright_red     "%K{9}"
+    bright_green   "%K{10}"
+    bright_yellow  "%K{11}"
+    bright_blue    "%K{12}"
+    bright_magenta "%K{13}"
+    bright_cyan    "%K{14}"
+    bright_white   "%K{15}"
+)
+
+fg_colors=(
+    black   "%F{0}"
+    red     "%F{1}"
+    green   "%F{2}"
+    yellow  "%F{3}"
+    blue    "%F{4}"
+    magenta "%F{5}"
+    cyan    "%F{6}"
+    white   "%F{7}"
+    bright_black   "%F{8}"
+    bright_red     "%F{9}"
+    bright_green   "%F{10}"
+    bright_yellow  "%F{11}"
+    bright_blue    "%F{12}"
+    bright_magenta "%F{13}"
+    bright_cyan    "%F{14}"
+    bright_white   "%F{15}"
+)
+
+# 현재 배경색 추적
+CURRENT_BG='NONE'
+
+# 세그먼트 시작 함수
+prompt_segment() {
+    local bg fg
+    [[ -n $1 ]] && bg="%K{$1}" || bg="%k"
+    [[ -n $2 ]] && fg="%F{$2}" || fg="%f"
+    
+    if [[ $CURRENT_BG != 'NONE' && $1 != $CURRENT_BG ]]; then
+        echo -n " %{$bg%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR%{$fg%} "
+    else
+        echo -n "%{$bg%}%{$fg%} "
+    fi
+    CURRENT_BG=$1
+    [[ -n $3 ]] && echo -n $3
+}
+
+# 세그먼트 끝 함수
+prompt_end() {
+    if [[ -n $CURRENT_BG ]]; then
+        echo -n " %{%k%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR"
+    else
+        echo -n "%{%k%}"
+    fi
+    echo -n "%{%f%}"
+    CURRENT_BG='NONE'
+}
+
+# 커스텀 프롬프트 함수
+custom_prompt() {
+    CURRENT_BG='NONE'
+    local prompt_line=""
+    
+    # 사용자@호스트 (항상 표시)
+    prompt_segment yellow black "%n@%m"
+    
+    # 현재 경로
+    prompt_segment blue white "%~"
+    
+    # Git 정보
+    if git rev-parse --git-dir > /dev/null 2>&1; then
+        local branch=$(git symbolic-ref --short HEAD 2>/dev/null || git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
+        local git_status=""
+        local git_bg="green"
+        
+        # Git 상태 확인
+        if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
+            git_status="●"
+            git_bg="red"
+        fi
+        
+        prompt_segment $git_bg white "⎇ $branch$git_status"
+    fi
+    
+    # Conda 환경
+    if [[ -n "$CONDA_DEFAULT_ENV" && "$CONDA_DEFAULT_ENV" != "base" ]]; then
+        prompt_segment bright_yellow black "🐍 $CONDA_DEFAULT_ENV"
+    fi
+    
+    # Python 가상환경
+    if [[ -n "$VIRTUAL_ENV" ]]; then
+        local venv_name=$(basename "$VIRTUAL_ENV")
+        prompt_segment green black "🐍 $venv_name"
+    fi
+    
+    # 세그먼트 종료
+    prompt_end
+    
+    # 두 번째 줄: 입력 프롬프트
+    echo ""
+    echo -n "%F{cyan}❯%f "
+}
+
+# PROMPT 설정
+PROMPT='$(custom_prompt)'
 
 # 사용자 정의 별칭
 alias ll="ls -alF"
@@ -41,9 +173,50 @@ mkcd() {
     mkdir -p "$1" && cd "$1"
 }
 
+# 사용자 정의 함수 자동 로드
+FUNCTIONS_DIR="${ZDOTDIR:-$HOME}/.config/zsh/functions"
+if [[ -d "$FUNCTIONS_DIR" ]]; then
+    for func_file in "$FUNCTIONS_DIR"/*; do
+        if [[ -f "$func_file" && -r "$func_file" ]]; then
+            source "$func_file"
+        fi
+    done
+fi
+
+# dotfiles의 functions 디렉토리에서 함수 로드 (현재 프로젝트)
+# zshrc 파일의 실제 위치를 찾아서 functions 디렉토리 경로 설정
+if [[ -L ~/.zshrc ]]; then
+    # 심볼릭 링크인 경우
+    ZSHRC_PATH="$(readlink ~/.zshrc)"
+    DOTFILES_FUNCTIONS_DIR="$(dirname "$ZSHRC_PATH")/functions"
+else
+    # 심볼릭 링크가 아닌 경우, 스크립트 실행 위치 기반으로 추정
+    DOTFILES_FUNCTIONS_DIR="$HOME/Desktop/workspace/my_github/dotfiles/zsh/functions"
+fi
+
+if [[ -d "$DOTFILES_FUNCTIONS_DIR" ]]; then
+    echo "Loading functions from: $DOTFILES_FUNCTIONS_DIR"  # 디버그용
+    for func_file in "$DOTFILES_FUNCTIONS_DIR"/*; do
+        if [[ -f "$func_file" && -r "$func_file" && "$(basename "$func_file")" != "README.md" ]]; then
+            echo "Loading function: $(basename "$func_file")"  # 디버그용
+            source "$func_file"
+        fi
+    done
+else
+    echo "Functions directory not found: $DOTFILES_FUNCTIONS_DIR"  # 디버그용
+fi
+
 # FZF 설정
 if command -v fzf &> /dev/null; then
     source <(fzf --zsh)
+fi
+
+# Zoxide 설정 (스마트한 cd 대체)
+if command -v zoxide &> /dev/null; then
+    eval "$(zoxide init zsh --cmd cd)"
+    # 추가 zoxide 별칭들
+    alias zi="zoxide query -i"  # 대화형 선택
+    alias zb="zoxide query -l"  # 자주 방문한 디렉토리 목록
 fi
 
 # Neofetch 실행 (선택사항)

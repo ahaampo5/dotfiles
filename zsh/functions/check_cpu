@@ -1,0 +1,53 @@
+#!/usr/bin/env zsh
+# CPU 정보 확인 함수
+
+function check_cpu() {
+    echo "🔥 CPU 정보"
+    echo "================"
+    
+    if [[ "$(uname)" == "Darwin" ]]; then
+        # macOS에서 CPU 정보 확인
+        local cpu_brand=$(sysctl -n machdep.cpu.brand_string 2>/dev/null)
+        local cpu_cores=$(sysctl -n hw.ncpu 2>/dev/null)
+        local cpu_threads=$(sysctl -n hw.logicalcpu 2>/dev/null)
+        local cpu_freq=$(sysctl -n hw.cpufrequency_max 2>/dev/null)
+        
+        echo "CPU: ${cpu_brand:-"정보 없음"}"
+        echo "물리 코어: ${cpu_cores:-"정보 없음"}"
+        echo "논리 코어: ${cpu_threads:-"정보 없음"}"
+        
+        # CPU 주파수 (Hz -> GHz 변환)
+        if [[ -n "$cpu_freq" ]]; then
+            local freq_ghz=$(echo "scale=2; $cpu_freq / 1000000000" | bc 2>/dev/null)
+            echo "최대 주파수: ${freq_ghz} GHz"
+        fi
+        
+        # CPU 사용률 (top 명령어 사용)
+        local cpu_usage=$(top -l 1 -n 0 | grep "CPU usage" | awk '{print $3}' | sed 's/%//')
+        echo "현재 사용률: ${cpu_usage}%"
+        
+        # 온도 정보 (powermetrics 사용, 권한이 있을 경우)
+        if command -v powermetrics >/dev/null 2>&1; then
+            local temp=$(sudo powermetrics -n 1 -s cpu_power 2>/dev/null | grep "CPU die temperature" | awk '{print $4}' | head -1)
+            if [[ -n "$temp" ]]; then
+                echo "CPU 온도: ${temp}°C"
+            fi
+        fi
+        
+    else
+        # Linux/Unix 시스템
+        if [[ -f /proc/cpuinfo ]]; then
+            local cpu_model=$(grep "model name" /proc/cpuinfo | head -1 | cut -d: -f2 | sed 's/^ *//')
+            local cpu_cores=$(grep -c "^processor" /proc/cpuinfo)
+            echo "CPU: ${cpu_model}"
+            echo "코어 수: ${cpu_cores}"
+        fi
+    fi
+    
+    echo ""
+}
+
+# 함수 실행 (스크립트로 직접 실행될 때)
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]] || [[ "${(%):-%x}" == "${0}" ]]; then
+    check_cpu "$@"
+fi

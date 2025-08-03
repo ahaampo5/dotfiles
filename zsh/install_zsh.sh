@@ -5,7 +5,7 @@ set -e  # 에러 발생 시 스크립트 중단
 echo "=== Zsh 설치 및 설정 스크립트 ==="
 
 # 필수 패키지 목록
-PACKAGES="zsh git curl wget fzf tree neofetch tmux neovim"
+PACKAGES="zsh git curl wget fzf tree neofetch tmux neovim zoxide"
 
 # 패키지 설치
 install_packages() {
@@ -33,7 +33,15 @@ install_packages
 # 기본 셸을 zsh로 변경
 if command -v zsh &> /dev/null; then
     echo "🔧 기본 셸을 zsh로 변경 중..."
-    chsh -s $(which zsh)
+    ZSH_PATH=$(which zsh)
+    
+    # /etc/shells에 zsh 경로가 등록되어 있는지 확인
+    if ! grep -q "^$ZSH_PATH$" /etc/shells; then
+        echo "  /etc/shells에 zsh 경로를 추가 중..."
+        echo "$ZSH_PATH" | sudo tee -a /etc/shells > /dev/null
+    fi
+    
+    chsh -s "$ZSH_PATH"
     echo "✅ 기본 셸이 zsh로 변경되었습니다."
 fi
 
@@ -41,28 +49,30 @@ fi
 echo "🎨 Oh My Zsh 설치 중..."
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
-# 테마 변경
-echo "🎨 테마를 agnoster로 변경 중..."
-sed -i.bak 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' ~/.zshrc
+# 테마는 zshrc 파일에서 커스텀 프롬프트로 설정됨
 
 # 플러그인 설치
 echo "🔌 플러그인 설치 중..."
-PLUGIN_DIR="${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins"
+PLUGIN_DIR="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins"
 
-# 플러그인 목록과 저장소
-declare -A PLUGINS=(
-    ["zsh-autosuggestions"]="https://github.com/zsh-users/zsh-autosuggestions"
-    ["zsh-syntax-highlighting"]="https://github.com/zsh-users/zsh-syntax-highlighting"
-    ["zsh-history-substring-search"]="https://github.com/zsh-users/zsh-history-substring-search"
-    ["fzf-tab"]="https://github.com/Aloxaf/fzf-tab"
-)
-
-for plugin in "${!PLUGINS[@]}"; do
-    if [ ! -d "$PLUGIN_DIR/$plugin" ]; then
-        echo "  설치 중: $plugin"
-        git clone "${PLUGINS[$plugin]}" "$PLUGIN_DIR/$plugin"
+# 플러그인 설치 함수
+install_plugin() {
+    local plugin_name="$1"
+    local plugin_url="$2"
+    
+    if [ ! -d "$PLUGIN_DIR/$plugin_name" ]; then
+        echo "  설치 중: $plugin_name"
+        git clone "$plugin_url" "$PLUGIN_DIR/$plugin_name"
+    else
+        echo "  이미 설치됨: $plugin_name"
     fi
-done
+}
+
+# 플러그인들 설치
+install_plugin "zsh-autosuggestions" "https://github.com/zsh-users/zsh-autosuggestions"
+install_plugin "zsh-syntax-highlighting" "https://github.com/zsh-users/zsh-syntax-highlighting"
+install_plugin "zsh-history-substring-search" "https://github.com/zsh-users/zsh-history-substring-search"
+install_plugin "fzf-tab" "https://github.com/Aloxaf/fzf-tab"
 
 # 플러그인 활성화
 echo "🔌 플러그인 활성화 중..."

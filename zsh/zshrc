@@ -106,7 +106,7 @@ custom_prompt() {
     local prompt_line=""
     
     # 사용자@호스트 (항상 표시)
-    prompt_segment yellow black "%n@%m"
+    prompt_segment black white "%n@%m"
     
     # 현재 경로
     prompt_segment blue white "%~"

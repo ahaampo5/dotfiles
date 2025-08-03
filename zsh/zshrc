@@ -27,17 +27,57 @@ export CONDA_CHANGEPS1=false
 # 프롬프트 설정
 setopt PROMPT_SUBST
 
-# Nerd Fonts 다운로드 및 설치
-mkdir -p ~/.local/share/fonts
-cd ~/.local/share/fonts
+# Nerd Fonts 설치 확인 및 다운로드
+install_nerd_fonts() {
+    # Nerd Fonts가 이미 설치되어 있는지 확인
+    if command -v fc-list &> /dev/null && fc-list | grep -i "nerd\|powerline" &> /dev/null; then
+        echo "Nerd Fonts already installed, skipping download..."
+        return 0
+    fi
+    
+    echo "Installing Nerd Fonts..."
+    local fonts_dir="$HOME/.local/share/fonts"
+    mkdir -p "$fonts_dir"
+    
+    # 현재 디렉토리 저장
+    local current_dir=$(pwd)
+    
+    cd "$fonts_dir"
+    
+    # JetBrains Mono Nerd Font 다운로드
+    if command -v wget &> /dev/null; then
+        wget -q https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip
+    elif command -v curl &> /dev/null; then
+        curl -L -o JetBrainsMono.zip https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip
+    else
+        echo "Error: wget or curl not found. Please install one of them to download fonts."
+        cd "$current_dir"
+        return 1
+    fi
+    
+    # 압축 해제 및 정리
+    if [[ -f JetBrainsMono.zip ]]; then
+        unzip -q JetBrainsMono.zip
+        rm JetBrainsMono.zip
+        
+        # 폰트 캐시 새로고침
+        if command -v fc-cache &> /dev/null; then
+            fc-cache -fv &> /dev/null
+        fi
+        
+        echo "Nerd Fonts installation completed!"
+    else
+        echo "Error: Failed to download JetBrainsMono.zip"
+        cd "$current_dir"
+        return 1
+    fi
+    
+    # 원래 디렉토리로 복귀
+    cd "$current_dir"
+}
 
-# JetBrains Mono Nerd Font 다운로드 (예시)
-wget https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip
-unzip JetBrainsMono.zip
-rm JetBrainsMono.zip
-
-# 폰트 캐시 새로고침
-fc-cache -fv
+# Nerd Fonts 설치 (필요한 경우에만)
+install_nerd_fonts
 
 # Powerline 스타일 구분자
 if [[ "$TERM" != "linux" ]] && command -v fc-list &> /dev/null && fc-list | grep -i "powerline\|nerd" &> /dev/null; then

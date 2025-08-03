@@ -1,0 +1,44 @@
+# ~/.zshenv
+# Zsh 환경 변수 설정 파일 (모든 zsh 세션에서 로드됨)
+
+# PATH 설정
+export PATH="$HOME/.local/bin:$PATH"
+
+# Homebrew 설정 (macOS)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # Apple Silicon Mac
+    if [[ -d "/opt/homebrew" ]]; then
+        export PATH="/opt/homebrew/bin:$PATH"
+        export HOMEBREW_PREFIX="/opt/homebrew"
+    # Intel Mac
+    elif [[ -d "/usr/local/Homebrew" ]]; then
+        export PATH="/usr/local/bin:$PATH"
+        export HOMEBREW_PREFIX="/usr/local"
+    fi
+fi
+
+# 편집기 설정
+export EDITOR="nvim"
+export VISUAL="nvim"
+
+# 언어 설정
+export LANG="en_US.UTF-8"
+export LC_ALL="en_US.UTF-8"
+
+# XDG 기본 디렉토리
+export XDG_CONFIG_HOME="$HOME/.config"
+export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CACHE_HOME="$HOME/.cache"
+
+# History 설정
+export HISTSIZE=10000
+export SAVEHIST=10000
+export HISTFILE="$HOME/.zsh_history"
+
+# FZF 설정
+export FZF_DEFAULT_COMMAND='find . -type f'
+export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+
+# 기타 유용한 환경변수
+export PAGER="less"
+export LESS="-R"

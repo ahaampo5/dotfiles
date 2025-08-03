@@ -194,17 +194,17 @@ else
     DOTFILES_FUNCTIONS_DIR="$HOME/Desktop/workspace/my_github/dotfiles/zsh/functions"
 fi
 
-if [[ -d "$DOTFILES_FUNCTIONS_DIR" ]]; then
-    echo "Loading functions from: $DOTFILES_FUNCTIONS_DIR"  # 디버그용
-    for func_file in "$DOTFILES_FUNCTIONS_DIR"/*; do
-        if [[ -f "$func_file" && -r "$func_file" && "$(basename "$func_file")" != "README.md" ]]; then
-            echo "Loading function: $(basename "$func_file")"  # 디버그용
-            source "$func_file"
-        fi
-    done
-else
-    echo "Functions directory not found: $DOTFILES_FUNCTIONS_DIR"  # 디버그용
-fi
+# if [[ -d "$DOTFILES_FUNCTIONS_DIR" ]]; then
+#     echo "Loading functions from: $DOTFILES_FUNCTIONS_DIR"  # 디버그용
+#     for func_file in "$DOTFILES_FUNCTIONS_DIR"/*; do
+#         if [[ -f "$func_file" && -r "$func_file" && "$(basename "$func_file")" != "README.md" ]]; then
+#             echo "Loading function: $(basename "$func_file")"  # 디버그용
+#             source "$func_file"
+#         fi
+#     done
+# else
+#     echo "Functions directory not found: $DOTFILES_FUNCTIONS_DIR"  # 디버그용
+# fi
 
 # FZF 설정
 if command -v fzf &> /dev/null; then

@@ -27,9 +27,28 @@ export CONDA_CHANGEPS1=false
 # 프롬프트 설정
 setopt PROMPT_SUBST
 
+# Nerd Fonts 다운로드 및 설치
+mkdir -p ~/.local/share/fonts
+cd ~/.local/share/fonts
+
+# JetBrains Mono Nerd Font 다운로드 (예시)
+wget https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip
+unzip JetBrainsMono.zip
+rm JetBrainsMono.zip
+
+# 폰트 캐시 새로고침
+fc-cache -fv
+
 # Powerline 스타일 구분자
-SEGMENT_SEPARATOR=$'\ue0b0'
-SEGMENT_SEPARATOR_RIGHT=$'\ue0b2'
+if [[ "$TERM" != "linux" ]] && command -v fc-list &> /dev/null && fc-list | grep -i "powerline\|nerd" &> /dev/null; then
+    # Powerline 문자 사용
+    SEGMENT_SEPARATOR=$'\ue0b0'
+    SEGMENT_SEPARATOR_RIGHT=$'\ue0b2'
+else
+    # 일반 ASCII 문자로 대체
+    SEGMENT_SEPARATOR=">"
+    SEGMENT_SEPARATOR_RIGHT="<"
+fi
 
 # 색상 정의
 typeset -A bg_colors fg_colors

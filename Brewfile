@@ -1,0 +1,8 @@
+brew "git"
+brew "node"
+brew "python"
+
+cask "visual-studio-code"
+cask "iterm2"
+cask "google-chrome"
+

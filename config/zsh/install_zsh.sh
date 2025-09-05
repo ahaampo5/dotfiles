@@ -6,7 +6,7 @@ IFS=$'\n\t'
 echo "=== Zsh 설치 및 설정 스크립트 ==="
 
 # 필수 패키지 목록
-PACKAGES="zsh git curl wget fzf tree fastfetch tmux neovim zoxide"
+PACKAGES="zsh git curl wget fzf fd rg tree fastfetch tmux neovim zoxide"
 
 # 패키지 설치
 install_packages() {

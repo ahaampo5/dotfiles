@@ -2,9 +2,13 @@
 # zsh config installer & setup script
 # Usage: bash scripts/run_zsh.sh
 
+
 set -e
 
-ZSH_CONFIG_DIR="$(dirname "$0")/../config/zsh"
+# Get absolute path to config/zsh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ZSH_CONFIG_DIR="$SCRIPT_DIR/../config/zsh"
+ZSH_CONFIG_DIR="$(cd "$ZSH_CONFIG_DIR" && pwd)"
 ZSH_TARGET_DIR="$HOME/.config/zsh"
 
 # 1. Run install_zsh.sh from config/zsh (if exists and executable)

@@ -42,18 +42,18 @@ function check_gpu() {
         fi
         
         # GPU 사용량 확인 (powermetrics 사용, 권한이 있을 경우)
-        echo ""
-        echo "GPU 사용률:"
-        if command -v powermetrics >/dev/null 2>&1; then
-            local gpu_usage=$(sudo powermetrics -n 1 -s gpu_power 2>/dev/null | grep "GPU HW active residency" | awk '{print $5}' | head -1)
-            if [[ -n "$gpu_usage" ]]; then
-                echo "  현재 사용률: ${gpu_usage}%"
-            else
-                echo "  사용률 정보를 가져올 수 없습니다 (권한 필요)"
-            fi
-        else
-            echo "  powermetrics를 사용할 수 없습니다"
-        fi
+        # echo ""
+        # echo "GPU 사용률:"
+        # if command -v powermetrics >/dev/null 2>&1; then
+        #     local gpu_usage=$(sudo powermetrics -n 1 -s gpu_power 2>/dev/null | grep "GPU HW active residency" | awk '{print $5}' | head -1)
+        #     if [[ -n "$gpu_usage" ]]; then
+        #         echo "  현재 사용률: ${gpu_usage}%"
+        #     else
+        #         echo "  사용률 정보를 가져올 수 없습니다 (권한 필요)"
+        #     fi
+        # else
+        #     echo "  powermetrics를 사용할 수 없습니다"
+        # fi
         
         # 외부 GPU 확인
         echo ""

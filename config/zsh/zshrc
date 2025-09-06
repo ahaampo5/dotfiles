@@ -29,21 +29,21 @@ setopt PROMPT_SUBST
 
 # Nerd Fonts 설치 확인 및 다운로드
 install_nerd_fonts() {
-    # Nerd Fonts가 이미 설치되어 있는지 확인
-    if command -v fc-list &> /dev/null && fc-list | grep -i "nerd\|powerline" &> /dev/null; then
-        echo "Nerd Fonts already installed, skipping download..."
+    # Nerd Fonts가 이미 설치되어 있는지 확인 (JetBrainsMono Nerd Font 기준)
+    if command -v fc-list &> /dev/null && fc-list | grep -i "JetBrainsMonoNerd*" &> /dev/null; then
+        echo "Nerd Fonts (JetBrainsMono) already installed, skipping download..."
         return 0
     fi
-    
+
     echo "Installing Nerd Fonts..."
     local fonts_dir="$HOME/.local/share/fonts"
     mkdir -p "$fonts_dir"
-    
+
     # 현재 디렉토리 저장
     local current_dir=$(pwd)
-    
+
     cd "$fonts_dir"
-    
+
     # JetBrains Mono Nerd Font 다운로드
     if command -v wget &> /dev/null; then
         wget -q https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip
@@ -54,24 +54,24 @@ install_nerd_fonts() {
         cd "$current_dir"
         return 1
     fi
-    
+
     # 압축 해제 및 정리
     if [[ -f JetBrainsMono.zip ]]; then
         unzip -q JetBrainsMono.zip
         rm JetBrainsMono.zip
-        
+
         # 폰트 캐시 새로고침
         if command -v fc-cache &> /dev/null; then
             fc-cache -fv &> /dev/null
         fi
-        
+
         echo "Nerd Fonts installation completed!"
     else
         echo "Error: Failed to download JetBrainsMono.zip"
         cd "$current_dir"
         return 1
     fi
-    
+
     # 원래 디렉토리로 복귀
     cd "$current_dir"
 }
@@ -232,11 +232,11 @@ mkcd() {
     mkdir -p "$1" && cd "$1"
 }
 
-# 사용자 정의 함수 자동 로드
+# 사용자 정의 함수 자동 로드 (check_system 파일 제외)
 FUNCTIONS_DIR="${ZDOTDIR:-$HOME}/.config/zsh/functions"
 if [[ -d "$FUNCTIONS_DIR" ]]; then
     for func_file in "$FUNCTIONS_DIR"/*; do
-        if [[ -f "$func_file" && -r "$func_file" ]]; then
+        if [[ -f "$func_file" && -r "$func_file" && "$(basename "$func_file")" != "check_system" ]]; then
             source "$func_file"
         fi
     done
@@ -278,6 +278,15 @@ if command -v zoxide &> /dev/null; then
     alias zb="zoxide query -l"  # 자주 방문한 디렉토리 목록
 fi
 
+_z_fzf_complete() {
+  local dest
+  dest=$(zoxide query -l | fzf --height 40% --reverse --preview 'ls -la {} | head -200') || return
+  LBUFFER="cd $dest"
+  zle redisplay
+}
+zle -N _z_fzf_complete
+bindkey '^G' _z_fzf_complete
+
 # Ctrl-F: 파일 찾고 열기
 fzf_open() {
   local file
@@ -285,6 +294,8 @@ fzf_open() {
   ${EDITOR:-nvim} "$file"
 }
 bindkey -s '^F' 'fzf_open\n'
+
+# z tab 자동 완성
 
 
 # Fastfetch 실행 (선택사항)

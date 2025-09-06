@@ -27,12 +27,12 @@ function check_cpu() {
         echo "현재 사용률: ${cpu_usage}%"
         
         # 온도 정보 (powermetrics 사용, 권한이 있을 경우)
-        if command -v powermetrics >/dev/null 2>&1; then
-            local temp=$(sudo powermetrics -n 1 -s cpu_power 2>/dev/null | grep "CPU die temperature" | awk '{print $4}' | head -1)
-            if [[ -n "$temp" ]]; then
-                echo "CPU 온도: ${temp}°C"
-            fi
-        fi
+        # if command -v powermetrics >/dev/null 2>&1; then
+        #     local temp=$(sudo powermetrics -n 1 -s cpu_power 2>/dev/null | grep "CPU die temperature" | awk '{print $4}' | head -1)
+        #     if [[ -n "$temp" ]]; then
+        #         echo "CPU 온도: ${temp}°C"
+        #     fi
+        # fi
         
     else
         # Linux/Unix 시스템

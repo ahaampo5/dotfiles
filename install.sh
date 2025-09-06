@@ -5,5 +5,6 @@
 # Homebrew package installation script
 sh scripts/run_brewfile.sh
 
-
+# Zsh config installation script
+bash scripts/run_zsh.sh
 

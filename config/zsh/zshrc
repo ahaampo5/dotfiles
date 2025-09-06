@@ -178,7 +178,7 @@ custom_prompt() {
         
         # Git 상태 확인
         if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
-            git_status="●"
+            git_status=" ●"
             git_bg="red"
         fi
         
@@ -278,7 +278,16 @@ if command -v zoxide &> /dev/null; then
     alias zb="zoxide query -l"  # 자주 방문한 디렉토리 목록
 fi
 
-# Neofetch 실행 (선택사항)
-if command -v neofetch &> /dev/null; then
-    neofetch
+# Ctrl-F: 파일 찾고 열기
+fzf_open() {
+  local file
+  file=$(fd --type f --hidden --exclude .git | fzf --height 40% --reverse --preview 'bat --style=numbers --color=always {} | head -200') || return
+  ${EDITOR:-nvim} "$file"
+}
+bindkey -s '^F' 'fzf_open\n'
+
+
+# Fastfetch 실행 (선택사항)
+if command -v fastfetch &> /dev/null; then
+    fastfetch
 fi

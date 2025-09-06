@@ -6,22 +6,22 @@ IFS=$'\n\t'
 echo "=== Zsh 설치 및 설정 스크립트 ==="
 
 # 필수 패키지 목록
-PACKAGES="zsh git curl wget fzf fd rg tree fastfetch tmux neovim zoxide"
+PACKAGES=(zsh git curl wget bat fzf fd rg tree fastfetch tmux neovim zoxide)
 
 # 패키지 설치
 install_packages() {
     if [[ "$OSTYPE" == "darwin"* ]]; then
         echo "📦 macOS에서 Homebrew로 패키지 설치 중..."
-        brew install $PACKAGES
+        brew install "${PACKAGES[@]}"
     elif command -v apt &> /dev/null; then
         echo "📦 Ubuntu/Debian에서 apt로 패키지 설치 중..."
-        sudo apt update && sudo apt install -y $PACKAGES
+        sudo apt update && sudo apt install -y "${PACKAGES[@]}" 
     elif command -v dnf &> /dev/null; then
         echo "📦 Fedora에서 dnf로 패키지 설치 중..."
-        sudo dnf install -y $PACKAGES
+        sudo dnf install -y "${PACKAGES[@]}"
     elif command -v pacman &> /dev/null; then
         echo "📦 Arch Linux에서 pacman으로 패키지 설치 중..."
-        sudo pacman -S --noconfirm $PACKAGES
+        sudo pacman -S --noconfirm "${PACKAGES[@]}"
     else
         echo "❌ 지원되지 않는 패키지 매니저입니다."
         exit 1
@@ -46,8 +46,13 @@ if command -v zsh &> /dev/null; then
     echo "✅ 기본 셸이 zsh로 변경되었습니다."
 fi
 
+
 # Oh My Zsh 설치
 echo "🎨 Oh My Zsh 설치 중..."
+if [ -d "$HOME/.oh-my-zsh" ]; then
+    echo "기존 Oh My Zsh 디렉토리 삭제 중..."
+    rm -rf "$HOME/.oh-my-zsh"
+fi
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 
 # 테마는 zshrc 파일에서 커스텀 프롬프트로 설정됨

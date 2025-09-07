@@ -32,6 +32,20 @@ install_nerd_fonts() {
     # Nerd Fonts가 이미 설치되어 있는지 확인 (JetBrainsMono Nerd Font 기준)
     if command -v fc-list &> /dev/null && fc-list | grep -i "JetBrainsMonoNerd*" &> /dev/null; then
         echo "Nerd Fonts (JetBrainsMono) already installed, skipping download..."
+        
+        # macOS에서는 폰트를 ~/Library/Fonts로 복사해야 터미널에서 인식됨
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            local src_dir="$HOME/.local/share/fonts"
+            local dest_dir="$HOME/Library/Fonts"
+            
+            if [[ -d "$src_dir" ]]; then
+                mkdir -p "$dest_dir"
+                # ttf/otf 파일들을 Library/Fonts로 복사
+                find "$src_dir" -type f \( -name "*.ttf" -o -name "*.otf" \) -exec cp {} "$dest_dir/" \; 2>/dev/null
+                echo "Copied Nerd Font files to ~/Library/Fonts for macOS compatibility."
+            fi
+        fi
+        
         return 0
     fi
 
@@ -66,6 +80,15 @@ install_nerd_fonts() {
         fi
 
         echo "Nerd Fonts installation completed!"
+        
+        # macOS에서는 폰트를 ~/Library/Fonts로 복사
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            local dest_dir="$HOME/Library/Fonts"
+            mkdir -p "$dest_dir"
+            # 현재 디렉토리(fonts_dir)의 ttf/otf 파일들을 Library/Fonts로 복사
+            find . -type f \( -name "*.ttf" -o -name "*.otf" \) -exec cp {} "$dest_dir/" \; 2>/dev/null
+            echo "Copied Nerd Font files to ~/Library/Fonts for macOS compatibility."
+        fi
     else
         echo "Error: Failed to download JetBrainsMono.zip"
         cd "$current_dir"
@@ -232,15 +255,16 @@ mkcd() {
     mkdir -p "$1" && cd "$1"
 }
 
-# 사용자 정의 함수 자동 로드 (check_system 파일 제외)
-FUNCTIONS_DIR="${ZDOTDIR:-$HOME}/.config/zsh/functions"
-if [[ -d "$FUNCTIONS_DIR" ]]; then
-    for func_file in "$FUNCTIONS_DIR"/*; do
-        if [[ -f "$func_file" && -r "$func_file" && "$(basename "$func_file")" != "check_system" ]]; then
-            source "$func_file"
-        fi
-    done
-fi
+# 사용자 정의 함수 자동 로드 (check_system, README.md 파일 제외)
+# FUNCTIONS_DIR="${ZDOTDIR:-$HOME}/.config/zsh/functions"
+# if [[ -d "$FUNCTIONS_DIR" ]]; then
+#     for func_file in "$FUNCTIONS_DIR"/*; do
+#         base_name="$(basename "$func_file")"
+#         if [[ -f "$func_file" && -r "$func_file" && "$base_name" != "check_system" && "$base_name" != "README.md" ]]; then
+#             source "$func_file"
+#         fi
+#     done
+# fi
 
 # dotfiles의 functions 디렉토리에서 함수 로드 (현재 프로젝트)
 # zshrc 파일의 실제 위치를 찾아서 functions 디렉토리 경로 설정
@@ -294,9 +318,6 @@ fzf_open() {
   ${EDITOR:-nvim} "$file"
 }
 bindkey -s '^F' 'fzf_open\n'
-
-# z tab 자동 완성
-
 
 # Fastfetch 실행 (선택사항)
 if command -v fastfetch &> /dev/null; then

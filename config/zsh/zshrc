@@ -102,16 +102,20 @@ install_nerd_fonts() {
 # Nerd Fonts 설치 (필요한 경우에만)
 install_nerd_fonts
 
-# Powerline 스타일 구분자
-if [[ "$TERM" != "linux" ]] && command -v fc-list &> /dev/null && fc-list | grep -i "powerline\|nerd" &> /dev/null; then
-    # Powerline 문자 사용
-    SEGMENT_SEPARATOR=$'\ue0b0'
-    SEGMENT_SEPARATOR_RIGHT=$'\ue0b2'
-else
-    # 일반 ASCII 문자로 대체
-    SEGMENT_SEPARATOR=">"
-    SEGMENT_SEPARATOR_RIGHT="<"
-fi
+# Powerline 스타일 구분자 - 안전한 설정
+# character not in range 에러 방지를 위해 조건부 설정
+
+# 기본적으로는 안전한 ASCII 문자 사용
+SEGMENT_SEPARATOR="▶"  # 또는 ">" 사용
+SEGMENT_SEPARATOR_RIGHT="◀"  # 또는 "<" 사용
+
+# 만약 Powerline 문자를 정말 사용하고 싶다면 아래 주석을 해제하세요
+# (단, character not in range 에러가 발생할 수 있습니다)
+#
+# if [[ "$TERM" != "linux" ]] && command -v fc-list &> /dev/null && fc-list | grep -i "powerline\|nerd" &> /dev/null; then
+#     SEGMENT_SEPARATOR=$'\ue0b0'
+#     SEGMENT_SEPARATOR_RIGHT=$'\ue0b2'
+# fi
 
 # 색상 정의
 typeset -A bg_colors fg_colors
@@ -296,9 +300,8 @@ fi
 
 # Zoxide 설정 (스마트한 cd 대체)
 if command -v zoxide &> /dev/null; then
-    eval "$(zoxide init zsh --cmd cd)"
+    eval "$(zoxide init zsh --cmd z)"
     # 추가 zoxide 별칭들
-    alias zi="zoxide query -i"  # 대화형 선택
     alias zb="zoxide query -l"  # 자주 방문한 디렉토리 목록
 fi
 

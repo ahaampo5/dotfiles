@@ -5,6 +5,9 @@ IFS=$'\n\t'
 
 echo "=== Zsh 설치 및 설정 스크립트 ==="
 
+# 기본 셸 변경 옵션 (true로 설정하면 zsh을 기본 셸로 변경)
+SET_ZSH_AS_DEFAULT=false
+
 # 필수 패키지 목록
 PACKAGES=(zsh git curl wget bat fzf fd rg tree fastfetch tmux neovim zoxide fontconfig)
 
@@ -31,8 +34,8 @@ install_packages() {
 # 패키지 설치 실행
 install_packages
 
-# 기본 셸을 zsh로 변경
-if command -v zsh &> /dev/null; then
+# 기본 셸을 zsh로 변경 (옵션이 true인 경우에만)
+if [[ "$SET_ZSH_AS_DEFAULT" == "true" ]] && command -v zsh &> /dev/null; then
     echo "🔧 기본 셸을 zsh로 변경 중..."
     ZSH_PATH=$(which zsh)
     
@@ -44,6 +47,9 @@ if command -v zsh &> /dev/null; then
     
     chsh -s "$ZSH_PATH"
     echo "✅ 기본 셸이 zsh로 변경되었습니다."
+elif [[ "$SET_ZSH_AS_DEFAULT" != "true" ]] && command -v zsh &> /dev/null; then
+    echo "💡 zsh가 설치되었지만 기본 셸 변경은 생략했습니다."
+    echo "   필요시 SET_ZSH_AS_DEFAULT=true로 설정하고 다시 실행하세요."
 fi
 
 

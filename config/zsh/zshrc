@@ -1,328 +1,238 @@
 # ~/.zshrc
-# Zsh 대화형 셸 설정 파일
+# interactive zsh 전용 설정
 
-# Oh My Zsh 설정
+# interactive shell이 아니면 종료
+[[ -o interactive ]] || return
+
+# Oh My Zsh
 export ZSH="$HOME/.oh-my-zsh"
-# 일단 기본 테마로 설정 (나중에 커스텀으로 대체)
 ZSH_THEME=""
 
-# 플러그인 설정
 plugins=(
-    git
-    zsh-autosuggestions
-    zsh-syntax-highlighting
-    fzf-tab
-    zsh-history-substring-search
+  git
+  zsh-autosuggestions
+  zsh-syntax-highlighting
+  fzf-tab
+  zsh-history-substring-search
 )
 
-source $ZSH/oh-my-zsh.sh
+if [[ -f "$ZSH/oh-my-zsh.sh" ]]; then
+  source "$ZSH/oh-my-zsh.sh"
+fi
 
-# Conda 환경 변수 설정 (프롬프트 변경 방지)
-export CONDA_CHANGEPS1=false
-
-# ============================================
-# 커스텀 2줄 프롬프트 설정 (agnoster 스타일)
-# ============================================
-
-# 프롬프트 설정
+# --------------------------------------------
+# Shell options
+# --------------------------------------------
 setopt PROMPT_SUBST
+setopt AUTO_CD
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_FIND_NO_DUPS
+setopt SHARE_HISTORY
+setopt APPEND_HISTORY
+setopt EXTENDED_HISTORY
+setopt INTERACTIVE_COMMENTS
 
-# Nerd Fonts 설치 확인 및 다운로드
-install_nerd_fonts() {
-    # Nerd Fonts가 이미 설치되어 있는지 확인 (JetBrainsMono Nerd Font 기준)
-    if command -v fc-list &> /dev/null && fc-list | grep -i "JetBrainsMonoNerd*" &> /dev/null; then
-        echo "Nerd Fonts (JetBrainsMono) already installed, skipping download..."
-        
-        # macOS에서는 폰트를 ~/Library/Fonts로 복사해야 터미널에서 인식됨
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            local src_dir="$HOME/.local/share/fonts"
-            local dest_dir="$HOME/Library/Fonts"
-            
-            if [[ -d "$src_dir" ]]; then
-                mkdir -p "$dest_dir"
-                # ttf/otf 파일들을 Library/Fonts로 복사
-                find "$src_dir" -type f \( -name "*.ttf" -o -name "*.otf" \) -exec cp {} "$dest_dir/" \; 2>/dev/null
-                echo "Copied Nerd Font files to ~/Library/Fonts for macOS compatibility."
-            fi
-        fi
-        
-        return 0
-    fi
+autoload -Uz compinit
+compinit -d "${XDG_CACHE_HOME:-$HOME/.cache}/zsh/.zcompdump"
 
-    echo "Installing Nerd Fonts..."
-    local fonts_dir="$HOME/.local/share/fonts"
-    mkdir -p "$fonts_dir"
+# --------------------------------------------
+# Compatibility aliases for Debian/Ubuntu
+# --------------------------------------------
+if ! command -v fd >/dev/null 2>&1 && command -v fdfind >/dev/null 2>&1; then
+  alias fd='fdfind'
+fi
 
-    # 현재 디렉토리 저장
-    local current_dir=$(pwd)
+if ! command -v bat >/dev/null 2>&1 && command -v batcat >/dev/null 2>&1; then
+  alias bat='batcat'
+fi
 
-    cd "$fonts_dir"
+# --------------------------------------------
+# FZF defaults
+# --------------------------------------------
+if command -v fd >/dev/null 2>&1; then
+  export FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'
+else
+  export FZF_DEFAULT_COMMAND='find . -type f -not -path "*/.git/*"'
+fi
 
-    # JetBrains Mono Nerd Font 다운로드
-    if command -v wget &> /dev/null; then
-        wget -q https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip
-    elif command -v curl &> /dev/null; then
-        curl -L -o JetBrainsMono.zip https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/JetBrainsMono.zip
-    else
-        echo "Error: wget or curl not found. Please install one of them to download fonts."
-        cd "$current_dir"
-        return 1
-    fi
+export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
 
-    # 압축 해제 및 정리
-    if [[ -f JetBrainsMono.zip ]]; then
-        unzip -q JetBrainsMono.zip
-        rm JetBrainsMono.zip
+# --------------------------------------------
+# Prompt
+# --------------------------------------------
+SEGMENT_SEPARATOR="▶"
+SEGMENT_SEPARATOR_RIGHT="◀"
 
-        # 폰트 캐시 새로고침
-        if command -v fc-cache &> /dev/null; then
-            fc-cache -fv &> /dev/null
-        fi
-
-        echo "Nerd Fonts installation completed!"
-        
-        # macOS에서는 폰트를 ~/Library/Fonts로 복사
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            local dest_dir="$HOME/Library/Fonts"
-            mkdir -p "$dest_dir"
-            # 현재 디렉토리(fonts_dir)의 ttf/otf 파일들을 Library/Fonts로 복사
-            find . -type f \( -name "*.ttf" -o -name "*.otf" \) -exec cp {} "$dest_dir/" \; 2>/dev/null
-            echo "Copied Nerd Font files to ~/Library/Fonts for macOS compatibility."
-        fi
-    else
-        echo "Error: Failed to download JetBrainsMono.zip"
-        cd "$current_dir"
-        return 1
-    fi
-
-    # 원래 디렉토리로 복귀
-    cd "$current_dir"
-}
-
-# Nerd Fonts 설치 (필요한 경우에만)
-install_nerd_fonts
-
-# Powerline 스타일 구분자 - 안전한 설정
-# character not in range 에러 방지를 위해 조건부 설정
-
-# 기본적으로는 안전한 ASCII 문자 사용
-SEGMENT_SEPARATOR="▶"  # 또는 ">" 사용
-SEGMENT_SEPARATOR_RIGHT="◀"  # 또는 "<" 사용
-
-# 만약 Powerline 문자를 정말 사용하고 싶다면 아래 주석을 해제하세요
-# (단, character not in range 에러가 발생할 수 있습니다)
-#
-# if [[ "$TERM" != "linux" ]] && command -v fc-list &> /dev/null && fc-list | grep -i "powerline\|nerd" &> /dev/null; then
-#     SEGMENT_SEPARATOR=$'\ue0b0'
-#     SEGMENT_SEPARATOR_RIGHT=$'\ue0b2'
-# fi
-
-# 색상 정의
-typeset -A bg_colors fg_colors
-bg_colors=(
-    black   "%K{0}"
-    red     "%K{1}"
-    green   "%K{2}"
-    yellow  "%K{3}"
-    blue    "%K{4}"
-    magenta "%K{5}"
-    cyan    "%K{6}"
-    white   "%K{7}"
-    bright_black   "%K{8}"
-    bright_red     "%K{9}"
-    bright_green   "%K{10}"
-    bright_yellow  "%K{11}"
-    bright_blue    "%K{12}"
-    bright_magenta "%K{13}"
-    bright_cyan    "%K{14}"
-    bright_white   "%K{15}"
-)
-
-fg_colors=(
-    black   "%F{0}"
-    red     "%F{1}"
-    green   "%F{2}"
-    yellow  "%F{3}"
-    blue    "%F{4}"
-    magenta "%F{5}"
-    cyan    "%F{6}"
-    white   "%F{7}"
-    bright_black   "%F{8}"
-    bright_red     "%F{9}"
-    bright_green   "%F{10}"
-    bright_yellow  "%F{11}"
-    bright_blue    "%F{12}"
-    bright_magenta "%F{13}"
-    bright_cyan    "%F{14}"
-    bright_white   "%F{15}"
-)
-
-# 현재 배경색 추적
 CURRENT_BG='NONE'
 
-# 세그먼트 시작 함수
 prompt_segment() {
-    local bg fg
-    [[ -n $1 ]] && bg="%K{$1}" || bg="%k"
-    [[ -n $2 ]] && fg="%F{$2}" || fg="%f"
-    
-    if [[ $CURRENT_BG != 'NONE' && $1 != $CURRENT_BG ]]; then
-        echo -n " %{$bg%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR%{$fg%} "
-    else
-        echo -n "%{$bg%}%{$fg%} "
-    fi
-    CURRENT_BG=$1
-    [[ -n $3 ]] && echo -n $3
+  local bg fg
+  [[ -n "${1:-}" ]] && bg="%K{$1}" || bg="%k"
+  [[ -n "${2:-}" ]] && fg="%F{$2}" || fg="%f"
+
+  if [[ "$CURRENT_BG" != 'NONE' && "${1:-}" != "$CURRENT_BG" ]]; then
+    echo -n " %{$bg%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR%{$fg%} "
+  else
+    echo -n "%{$bg%}%{$fg%} "
+  fi
+
+  CURRENT_BG="${1:-NONE}"
+  [[ -n "${3:-}" ]] && echo -n "${3}"
 }
 
-# 세그먼트 끝 함수
 prompt_end() {
-    if [[ -n $CURRENT_BG ]]; then
-        echo -n " %{%k%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR"
-    else
-        echo -n "%{%k%}"
-    fi
-    echo -n "%{%f%}"
-    CURRENT_BG='NONE'
+  if [[ "$CURRENT_BG" != 'NONE' ]]; then
+    echo -n " %{%k%F{$CURRENT_BG}%}$SEGMENT_SEPARATOR"
+  else
+    echo -n "%{%k%}"
+  fi
+  echo -n "%{%f%}"
+  CURRENT_BG='NONE'
 }
 
-# 커스텀 프롬프트 함수
 custom_prompt() {
-    CURRENT_BG='NONE'
-    local prompt_line=""
-    
-    # 사용자@호스트 (항상 표시)
-    prompt_segment black white "%n@%m"
-    
-    # 현재 경로
-    prompt_segment blue white "%~"
-    
-    # Git 정보
-    if git rev-parse --git-dir > /dev/null 2>&1; then
-        local branch=$(git symbolic-ref --short HEAD 2>/dev/null || git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
-        local git_status=""
-        local git_bg="green"
-        
-        # Git 상태 확인
-        if [[ -n $(git status --porcelain 2>/dev/null) ]]; then
-            git_status=" ●"
-            git_bg="red"
-        fi
-        
-        prompt_segment $git_bg white "⎇ $branch$git_status"
+  CURRENT_BG='NONE'
+
+  prompt_segment black white "%n@%m"
+  prompt_segment blue white "%~"
+
+  if git rev-parse --git-dir >/dev/null 2>&1; then
+    local branch git_status git_bg
+    branch="$(git symbolic-ref --short HEAD 2>/dev/null || git describe --tags --exact-match 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)"
+    git_status=""
+    git_bg="green"
+
+    if [[ -n "$(git status --porcelain 2>/dev/null)" ]]; then
+      git_status=" ●"
+      git_bg="red"
     fi
-    
-    # Conda 환경
-    if [[ -n "$CONDA_DEFAULT_ENV" && "$CONDA_DEFAULT_ENV" != "base" ]]; then
-        prompt_segment bright_yellow black "🐍 $CONDA_DEFAULT_ENV"
-    fi
-    
-    # Python 가상환경
-    if [[ -n "$VIRTUAL_ENV" ]]; then
-        local venv_name=$(basename "$VIRTUAL_ENV")
-        prompt_segment green black "🐍 $venv_name"
-    fi
-    
-    # 세그먼트 종료
-    prompt_end
-    
-    # 두 번째 줄: 입력 프롬프트
-    echo ""
-    echo -n "%F{cyan}❯%f "
+
+    prompt_segment "$git_bg" white "⎇ $branch$git_status"
+  fi
+
+  if [[ -n "${CONDA_DEFAULT_ENV:-}" && "${CONDA_DEFAULT_ENV:-}" != "base" ]]; then
+    prompt_segment yellow black "🐍 $CONDA_DEFAULT_ENV"
+  fi
+
+  if [[ -n "${VIRTUAL_ENV:-}" ]]; then
+    local venv_name
+    venv_name="$(basename "$VIRTUAL_ENV")"
+    prompt_segment green black "🐍 $venv_name"
+  fi
+
+  prompt_end
+  echo ""
+  echo -n "%F{cyan}❯%f "
 }
 
-# PROMPT 설정
 PROMPT='$(custom_prompt)'
 
-# 사용자 정의 별칭
-alias ll="ls -alF"
-alias la="ls -A"
-alias l="ls -CF"
-alias ..="cd .."
-alias ...="cd ../.."
-alias grep="grep --color=auto"
-alias fgrep="fgrep --color=auto"
-alias egrep="egrep --color=auto"
+# --------------------------------------------
+# Aliases
+# --------------------------------------------
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
 
-# Git 별칭
-alias gs="git status"
-alias ga="git add"
-alias gc="git commit"
-alias gp="git push"
-alias gl="git pull"
-alias gd="git diff"
-alias gb="git branch"
-alias gco="git checkout"
+# modern replacements
+command -v eza >/dev/null 2>&1 && alias ls='eza'
+command -v bat >/dev/null 2>&1 && alias cat='bat --paging=never'
 
-# 유용한 함수
+# Git aliases
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git pull'
+alias gd='git diff'
+alias gb='git branch'
+alias gco='git checkout'
+
+# --------------------------------------------
+# Functions
+# --------------------------------------------
 mkcd() {
-    mkdir -p "$1" && cd "$1"
+  mkdir -p "$1" && cd "$1"
 }
 
-# 사용자 정의 함수 자동 로드 (check_system, README.md 파일 제외)
-# FUNCTIONS_DIR="${ZDOTDIR:-$HOME}/.config/zsh/functions"
-# if [[ -d "$FUNCTIONS_DIR" ]]; then
-#     for func_file in "$FUNCTIONS_DIR"/*; do
-#         base_name="$(basename "$func_file")"
-#         if [[ -f "$func_file" && -r "$func_file" && "$base_name" != "check_system" && "$base_name" != "README.md" ]]; then
-#             source "$func_file"
-#         fi
-#     done
-# fi
+# dotfiles functions 디렉토리 로드
+load_dotfiles_functions() {
+  local zshrc_path functions_dir
 
-# dotfiles의 functions 디렉토리에서 함수 로드 (현재 프로젝트)
-# zshrc 파일의 실제 위치를 찾아서 functions 디렉토리 경로 설정
-if [[ -L ~/.zshrc ]]; then
-    # 심볼릭 링크인 경우
-    ZSHRC_PATH="$(readlink ~/.zshrc)"
-    DOTFILES_FUNCTIONS_DIR="$(dirname "$ZSHRC_PATH")/functions"
-else
-    # 심볼릭 링크가 아닌 경우, 스크립트 실행 위치 기반으로 추정
-    DOTFILES_FUNCTIONS_DIR="$HOME/Desktop/workspace/my_github/dotfiles/zsh/functions"
-fi
+  if [[ -L "$HOME/.zshrc" ]]; then
+    zshrc_path="$(readlink "$HOME/.zshrc")"
+    [[ "$zshrc_path" != /* ]] && zshrc_path="$(cd "$(dirname "$HOME/.zshrc")" && cd "$(dirname "$zshrc_path")" && pwd)/$(basename "$zshrc_path")"
+    functions_dir="$(dirname "$zshrc_path")/functions"
+  else
+    functions_dir="${XDG_CONFIG_HOME:-$HOME/.config}/zsh/functions"
+  fi
 
-# if [[ -d "$DOTFILES_FUNCTIONS_DIR" ]]; then
-#     echo "Loading functions from: $DOTFILES_FUNCTIONS_DIR"  # 디버그용
-#     for func_file in "$DOTFILES_FUNCTIONS_DIR"/*; do
-#         if [[ -f "$func_file" && -r "$func_file" && "$(basename "$func_file")" != "README.md" ]]; then
-#             echo "Loading function: $(basename "$func_file")"  # 디버그용
-#             source "$func_file"
-#         fi
-#     done
-# else
-#     echo "Functions directory not found: $DOTFILES_FUNCTIONS_DIR"  # 디버그용
-# fi
-
-# FZF 설정
-if command -v fzf &> /dev/null; then
-    source <(fzf --zsh)
-fi
-
-# Zoxide 설정 (스마트한 cd 대체)
-if command -v zoxide &> /dev/null; then
-    eval "$(zoxide init zsh --cmd z)"
-    # 추가 zoxide 별칭들
-    alias zb="zoxide query -l"  # 자주 방문한 디렉토리 목록
-fi
-
-_z_fzf_complete() {
-  local dest
-  dest=$(zoxide query -l | fzf --height 40% --reverse --preview 'ls -la {} | head -200') || return
-  LBUFFER="cd $dest"
-  zle redisplay
+  if [[ -d "$functions_dir" ]]; then
+    local func_file
+    for func_file in "$functions_dir"/*; do
+      [[ -f "$func_file" && -r "$func_file" ]] || continue
+      [[ "$(basename "$func_file")" == "README.md" ]] && continue
+      source "$func_file"
+    done
+  fi
 }
-zle -N _z_fzf_complete
-bindkey '^G' _z_fzf_complete
 
-# Ctrl-F: 파일 찾고 열기
+load_dotfiles_functions
+
+# --------------------------------------------
+# fzf
+# --------------------------------------------
+if command -v fzf >/dev/null 2>&1; then
+  source <(fzf --zsh)
+fi
+
+# Ctrl-G: zoxide + fzf
+if command -v zoxide >/dev/null 2>&1; then
+  eval "$(zoxide init zsh --cmd z)"
+
+  alias zb='zoxide query -l'
+
+  _z_fzf_complete() {
+    local dest
+    dest=$(zoxide query -l | fzf --height 40% --reverse --preview 'ls -la {} | head -200') || return
+    LBUFFER="cd ${(q)dest}"
+    zle redisplay
+  }
+  zle -N _z_fzf_complete
+  bindkey '^G' _z_fzf_complete
+fi
+
+# Ctrl-F: 파일 열기
 fzf_open() {
-  local file
-  file=$(fd --type f --hidden --exclude .git | fzf --height 40% --reverse --preview 'bat --style=numbers --color=always {} | head -200') || return
-  ${EDITOR:-nvim} "$file"
-}
-bindkey -s '^F' 'fzf_open\n'
+  local file finder preview_cmd
 
-# Fastfetch 실행 (선택사항)
-if command -v fastfetch &> /dev/null; then
-    fastfetch
+  if command -v fd >/dev/null 2>&1; then
+    finder='fd --type f --hidden --exclude .git'
+  else
+    finder='find . -type f -not -path "*/.git/*"'
+  fi
+
+  if command -v bat >/dev/null 2>&1; then
+    preview_cmd='bat --style=numbers --color=always {} | head -200'
+  else
+    preview_cmd='sed -n "1,200p" {}'
+  fi
+
+  file=$(eval "$finder" | fzf --height 40% --reverse --preview "$preview_cmd") || return
+  "${EDITOR:-nvim}" "$file"
+}
+zle -N fzf_open_widget fzf_open
+bindkey '^F' fzf_open_widget
+
+# --------------------------------------------
+# fastfetch
+# --------------------------------------------
+if [[ -z "${SSH_TTY:-}" ]] && command -v fastfetch >/dev/null 2>&1; then
+  fastfetch
 fi
